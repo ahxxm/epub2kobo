@@ -1,5 +1,7 @@
 FROM golang:alpine AS builder
 
+RUN apk add --no-cache upx
+
 WORKDIR /app
 
 # Download kepubify for embedding
@@ -14,7 +16,8 @@ COPY static/ static/
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o epub2kobo
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o epub2kobo && \
+    upx --best --lzma epub2kobo
 
 FROM scratch
 

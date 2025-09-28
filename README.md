@@ -8,7 +8,7 @@ A lightweight web service for sending EPUB files to Kobo e-readers, with optiona
 - Optional KEPUB conversion for enhanced reading experience
 - Simple 4-character key system for file transfer
 - Automatic file cleanup after timeout
-- Minimal Docker image (~15MB)
+- Minimal Docker image (~3MB)
 
 ## Quick Start
 
