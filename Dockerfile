@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:alpine AS builder
+FROM golang:alpine AS builder
 
 RUN apk add --no-cache upx
 

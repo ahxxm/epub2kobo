@@ -262,11 +262,11 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	finalPath := tempPath
 	converted := false
 
-	// Get existing entry to check for Kobo user agent
-	existingEntry, _ := value.(*FileEntry)
-	shouldConvert := r.FormValue("kepubify") == "on" && existingEntry != nil && strings.Contains(existingEntry.UserAgent, "Kobo")
+	// Convert to kepub if requested
+	shouldConvert := r.FormValue("kepubify") == "on"
 
 	if shouldConvert {
+		log.Printf("Converting to kepub for key %s", key)
 		if kepubPath := convertToKepub(tempPath); kepubPath != "" {
 			os.Remove(tempPath)
 			finalPath = kepubPath
@@ -275,7 +275,8 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Delete old file if it exists (when re-uploading to same key)
+	// When uploading multiple files, delete previous first
+	existingEntry := value.(*FileEntry)
 	if existingEntry.Path != "" && existingEntry.Path != finalPath {
 		os.Remove(existingEntry.Path)
 		log.Printf("Deleted old file %s for key %s (replaced with %s)", existingEntry.Filename, key, filename)
@@ -479,6 +480,11 @@ func convertToKepub(epubPath string) string {
 	}
 
 	tempDir := os.TempDir()
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		log.Printf("failed to create temp directory: %v", err)
+		return ""
+	}
+
 	kepubifyPath := filepath.Join(tempDir, "kepubify-"+generateKey())
 	if err := os.WriteFile(kepubifyPath, kepubifyBinary, 0755); err != nil {
 		log.Printf("failed to extract kepubify: %v", err)
