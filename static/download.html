@@ -5,7 +5,6 @@
 	<meta charset="utf-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 	<link rel="stylesheet" type="text/css" href="./style.css?s"/>
-	<script src="./common.js?a"></script>
 </head>
 <body>
 
@@ -46,6 +45,19 @@
 <div id="logs"></div>
 
 <script type="text/javascript">
+
+// Inline xhr function from common.js
+function xhr(method, url, cb) {
+	var x = new XMLHttpRequest()
+	x.onload = function () {
+		cb(x)
+	}
+	x.onerror = function () {
+		cb(x)
+	}
+	x.open(method, url, true)
+	x.send(null)
+}
 
 var keyOutput = document.getElementById('keyoutput')
 var keyGenBtn = document.getElementById('keygen')
