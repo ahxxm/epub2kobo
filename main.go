@@ -25,6 +25,9 @@ import (
 //go:embed static/upload.html static/download.html static/style.css
 var staticFiles embed.FS
 
+//go:embed kepubify
+var kepubifyBinary []byte
+
 const (
 	maxUploadSize      = 800 * 1024 * 1024
 	keyLength          = 4
@@ -469,12 +472,21 @@ func isEPUB(file multipart.File) bool {
 }
 
 func convertToKepub(epubPath string) string {
-	if _, err := exec.LookPath("kepubify"); err != nil {
+	if len(kepubifyBinary) == 0 {
+		log.Println("Kepubify binary not available, skipping conversion")
 		return ""
 	}
 
+	tempDir := os.TempDir()
+	kepubifyPath := filepath.Join(tempDir, "kepubify-"+generateKey())
+	if err := os.WriteFile(kepubifyPath, kepubifyBinary, 0755); err != nil {
+		log.Printf("failed to extract kepubify: %v", err)
+		return ""
+	}
+	defer os.Remove(kepubifyPath) // Clean up after conversion
+
 	kepubPath := strings.TrimSuffix(epubPath, ".epub") + ".kepub.epub"
-	cmd := exec.Command("kepubify", "-o", kepubPath, epubPath)
+	cmd := exec.Command(kepubifyPath, "-o", kepubPath, epubPath)
 
 	if err := cmd.Run(); err != nil {
 		log.Printf("kepubify conversion failed: %v", err)

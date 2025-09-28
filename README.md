@@ -26,6 +26,10 @@ docker run -p 3001:3001 epub2kobo
 ### Local Development
 
 ```bash
+# Download kepubify binary (required to embed into build)
+wget -O kepubify https://github.com/pgaskin/kepubify/releases/download/v4.0.4/kepubify-linux-64bit
+chmod +x kepubify
+
 # Build the Go binary
 go build -o epub2kobo
 
@@ -58,10 +62,6 @@ Files are automatically deleted after 30 seconds of inactivity or 1 hour maximum
 - **Max file size:** 800MB
 - **Supported formats:** EPUB only
 - **Storage:** Temporary (files auto-delete after timeout)
-
-## Optional Dependencies
-
-- [kepubify](https://github.com/pgaskin/kepubify) - For KEPUB conversion (included in Docker image)
 
 ## License
 
