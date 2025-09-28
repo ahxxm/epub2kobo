@@ -48,7 +48,7 @@ type FileEntry struct {
 	Converted bool
 	CreatedAt time.Time
 	LastSeen  time.Time
-	UserAgent string
+	UserAgent string // User-Agent from key generation, kepubify only if contains "Kobo"
 	mu        sync.Mutex
 }
 
@@ -143,7 +143,7 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 
 	key := generateKey()
 
-	// Store the key with user agent info
+	// Store the key with user agent info for validation later
 	entry := &FileEntry{
 		Key:       key,
 		CreatedAt: time.Now(),
@@ -154,6 +154,7 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"key": key})
+	log.Printf("Generated key %s for %s", key, r.RemoteAddr)
 }
 
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -261,6 +262,12 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 			converted = true
 			filename = strings.TrimSuffix(filename, ".epub") + ".kepub.epub"
 		}
+	}
+
+	// Delete old file if it exists (when re-uploading to same key)
+	if existingEntry.Path != "" && existingEntry.Path != finalPath {
+		os.Remove(existingEntry.Path)
+		log.Printf("Deleted old file %s for key %s (replaced with %s)", existingEntry.Filename, key, filename)
 	}
 
 	// Update existing entry with file info
