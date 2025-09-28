@@ -33,11 +33,11 @@ SERVER_PID=$!
 sleep 1
 
 # 1. Generate key (Kobo side)
-KEY=$(curl -s -X POST -H "User-Agent: Mozilla/5.0 (Kobo Touch)" http://localhost:3001/generate | jq -r .key)
+KEY=$(curl -s -X POST -H "User-Agent: Mozilla/5.0 (Kobo Touch)" http://localhost:3001/generate)
 echo "Generated key: $KEY"
 
 # 2. Verify key not ready
-curl -s http://localhost:3001/status/$KEY | jq '.ready' # should be false
+curl -s http://localhost:3001/status/$KEY | jq '.file' # should be null
 
 # 3. Create minimal test EPUB
 mkdir -p test_epub/META-INF
@@ -58,8 +58,8 @@ echo "Upload response: $RESPONSE"
 
 # 5. Verify file ready
 STATUS=$(curl -s http://localhost:3001/status/$KEY)
-echo "Status: $(echo $STATUS | jq '.ready')" # should be true
-FILENAME=$(echo $STATUS | jq -r .filename)
+echo "File ready: $(echo $STATUS | jq '.file // "not ready"')"
+FILENAME=$(echo $STATUS | jq -r .file.name)
 
 # 6. Test download (Kobo side)
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3001/$FILENAME?key=$KEY")

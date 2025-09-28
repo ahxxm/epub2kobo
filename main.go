@@ -167,8 +167,8 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.store.Store(key, entry)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"key": key})
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(key))
 	log.Printf("Generated key %s for %s", key, r.RemoteAddr)
 }
 
@@ -326,11 +326,11 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	ready := entry.Filename != "" && entry.Path != ""
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"ready":     ready,
-		"filename":  entry.Filename,
-		"converted": entry.Converted,
-	})
+	response := make(map[string]interface{})
+	if ready {
+		response["file"] = map[string]string{"name": entry.Filename}
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {

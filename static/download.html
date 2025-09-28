@@ -74,7 +74,7 @@ function pollFile () {
 		downloads.style.display = 'none'
 		return
 	}
-	xhr('GET', './status/' + key, function (x) {
+	xhr('GET', '/status/' + key, function (x) {
 		var data
 		try {
 			data = JSON.parse(x.responseText)
@@ -98,6 +98,7 @@ function pollFile () {
 		} else {
 			downloads.style.display = 'none'
 		}
+		// NOTE: note used
 		if (urls) {
 			urlsnode.innerHTML = '<br/><div style="font-size: 1.3em;"><em>Urls</em></div>'
 			urls.forEach(function (url) {
@@ -118,7 +119,7 @@ function generateKey () {
 	keyOutput.textContent = '––––'
 	if (pollTimer) clearInterval(pollTimer)
 	downloads.style.display = 'none'
-	xhr('POST', './generate', function (x) {
+	xhr('POST', '/generate', function (x) {
 		if (x.responseText !== 'error' && x.status === 200) {
 			key = x.responseText
 			keyOutput.textContent = key
@@ -139,7 +140,7 @@ window.onload = function () {
 	generateKey()
 }
 
-siteurl.textContent = window.location.href
+siteurl.textContent = window.location.protocol + '//' + window.location.host
 siteurl.href = siteurl.textContent
 siteurl.target = '_self'
 
