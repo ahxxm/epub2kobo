@@ -19,7 +19,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unicode"
 )
 
 //go:embed static/upload.html static/download.html static/style.css
@@ -36,8 +35,8 @@ const (
 	cleanupInterval    = 10 * time.Second
 	mimeDetectBytes    = 512
 	epubHeaderBytes    = 58
-	epubPKSignature1   = 0x50
-	epubPKSignature2   = 0x4B
+	epubPKSignature1   = 'P'
+	epubPKSignature2   = 'K'
 	epubMimetypeOffset = 30
 	epubMimetypeEnd    = 38
 	epubMimeStart      = 38
@@ -432,17 +431,17 @@ func generateKey() string {
 func sanitizeFilename(filename string) string {
 	filename = filepath.Base(filename)
 
-	const asciiLimit = 128
 	var result []rune
 	for _, r := range filename {
-		isASCII := r < asciiLimit
-		isAllowedChar := unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '_' || r == ' '
-		if isASCII && isAllowedChar {
-			result = append(result, r)
-		} else if r == '–' || r == '—' {
+		if r == '/' || r == '\\' || r == ':' || r == '*' ||
+			r == '?' || r == '"' || r == '<' || r == '>' || r == '|' ||
+			r == 0 || (r >= 1 && r <= 31) { // NULL and control
+			continue
+		}
+		if r == '–' || r == '—' {
 			result = append(result, '-')
-		} else if unicode.IsSpace(r) {
-			result = append(result, ' ')
+		} else {
+			result = append(result, r)
 		}
 	}
 
