@@ -55,6 +55,18 @@ type FileEntry struct {
 	mu        sync.Mutex
 }
 
+func (e *FileEntry) Touch() {
+	e.mu.Lock()
+	e.LastSeen = time.Now()
+	e.mu.Unlock()
+}
+
+func (e *FileEntry) GetLastSeen() time.Time {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.LastSeen
+}
+
 type Server struct {
 	store      sync.Map // map[string]*FileEntry
 	uploadsDir string
@@ -192,11 +204,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update last seen time for existing key
-	if entry, ok := value.(*FileEntry); ok && entry != nil {
-		entry.mu.Lock()
-		entry.LastSeen = time.Now()
-		entry.mu.Unlock()
-	}
+	value.(*FileEntry).Touch()
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -312,9 +320,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entry := value.(*FileEntry)
-	entry.mu.Lock()
-	entry.LastSeen = time.Now()
-	entry.mu.Unlock()
+	entry.Touch()
 
 	// Check if file has been uploaded
 	ready := entry.Filename != "" && entry.Path != ""
@@ -347,10 +353,7 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entry := value.(*FileEntry)
-
-	entry.mu.Lock()
-	entry.LastSeen = time.Now()
-	entry.mu.Unlock()
+	entry.Touch()
 
 	if entry.Filename != filename {
 		http.NotFound(w, r)
@@ -386,10 +389,8 @@ func (s *Server) cleanupRoutine() {
 		now := time.Now()
 		s.store.Range(func(key, value interface{}) bool {
 			entry := value.(*FileEntry)
-			entry.mu.Lock()
-			lastSeen := entry.LastSeen
+			lastSeen := entry.GetLastSeen()
 			createdAt := entry.CreatedAt
-			entry.mu.Unlock()
 
 			isInactive := now.Sub(lastSeen) > keyTimeout
 			isExpired := now.Sub(createdAt) > maxKeyAge
