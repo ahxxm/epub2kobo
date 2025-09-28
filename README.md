@@ -33,14 +33,22 @@ go build -o epub2kobo
 ./epub2kobo
 ```
 
-The service runs on http://localhost:3001
+The service will display network addresses on startup:
+```
+Server starting on port 3001
+Accessible at:
+  http://localhost:3001 (this machine only)
+  http://192.168.1.100:3001 (network)
+```
 
 ## Usage
 
-1. **On your Kobo:** Open the browser and navigate to the service URL
-2. **On your phone/computer:** Enter the 4-character key shown on Kobo
+1. **On your Kobo:** Open the browser and navigate to the service's network address (e.g., `http://192.168.1.100:3001`)
+2. **On your phone/computer:** Navigate to the same network address and enter the 4-character key shown on Kobo
 3. Upload your EPUB file (max 800MB)
 4. The file downloads automatically to your Kobo
+
+**Note:** Both devices must be on the same network and use the server's IP address, not localhost
 
 Files are automatically deleted after 30 seconds of inactivity or 1 hour maximum.
 

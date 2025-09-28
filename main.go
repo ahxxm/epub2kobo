@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -87,7 +88,24 @@ func main() {
 		os.Exit(0)
 	}()
 
-	log.Printf("Server starting on port %s", port)
+	// Get network interfaces to display accessible addresses
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		log.Printf("Warning: Could not get network interfaces: %v", err)
+		log.Printf("Server starting on port %s", port)
+	} else {
+		log.Printf("Server starting on port %s", port)
+		log.Println("Accessible at:")
+		log.Printf("  http://localhost:%s (this machine only)", port)
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					log.Printf("  http://%s:%s (network)", ipnet.IP.String(), port)
+				}
+			}
+		}
+	}
+	
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal("Server failed:", err)
 	}
