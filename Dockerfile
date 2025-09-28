@@ -1,4 +1,4 @@
-FROM golang:alpine AS builder
+FROM --platform=linux/amd64 golang:alpine AS builder
 
 RUN apk add --no-cache upx
 
@@ -16,7 +16,7 @@ COPY static/ static/
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o epub2kobo && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o epub2kobo && \
     upx --best --lzma epub2kobo
 
 FROM scratch
