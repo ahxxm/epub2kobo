@@ -8,11 +8,11 @@
 - **Testing:** No test suite - verify manually at http://localhost:3001
 
 ## Service Behavior & Data Flow
-E-reader browser workflow: User opens `/` → generates 4-char key → polls `/status/{key}` every 5s → downloads file via `/{filename}?key={key}`.
-Desktop/phone workflow: User enters key → uploads ebook to `/upload` → file converted if needed → stored in `uploads/` → served to e-reader.
+Kobo browser workflow: User opens `/` → generates 4-char key → polls `/status/{key}` every 5s → downloads file via `/{filename}?key={key}`.
+Desktop/phone workflow: User enters key → uploads EPUB to `/upload` → optionally converted to KEPUB → stored in `uploads/` → served to Kobo.
 **Security:** Keys expire 30s after last activity, max 1hr lifetime. User-agent validation prevents key hijacking. Files auto-delete on expiry.
-**Conversions:** EPUB→MOBI for Kindle (kindlegen), EPUB→KEPUB for Kobo (kepubify), PDF margin cropping (pdfcropmargins).
-**File limits:** 800MB max, allowed: .epub/.mobi/.pdf/.cbz/.cbr/.html/.txt
+**Conversions:** EPUB→KEPUB for Kobo (kepubify) - optional conversion for better reading experience.
+**File limits:** 800MB max, allowed: .epub only
 
 ## Code Patterns
 - **Framework:** Koa with @koa/router, multer for uploads, koa-static for static files

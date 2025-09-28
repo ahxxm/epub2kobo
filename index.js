@@ -22,10 +22,9 @@ const maxExpireDuration = 1 * 60 * 60  // 1 hour
 const maxFileSize = 1024 * 1024 * 800  // 800 MB
 
 const TYPE_EPUB = 'application/epub+zip'
-const TYPE_MOBI = 'application/x-mobipocket-ebook'
 
-const allowedTypes = [TYPE_EPUB, TYPE_MOBI, 'application/pdf', 'application/vnd.comicbook+zip', 'application/vnd.comicbook-rar', 'text/html', 'text/plain', 'application/zip', 'application/x-rar-compressed']
-const allowedExtensions = ['epub', 'mobi', 'pdf', 'cbz', 'cbr', 'html', 'txt']
+const allowedTypes = [TYPE_EPUB, 'application/zip']
+const allowedExtensions = ['epub']
 
 const keyChars = "23456789ACDEFGHJKLMNPRSTUVWXYZ"
 const keyLength = 4
@@ -311,69 +310,9 @@ router.post('/upload', async (ctx, next) => {
     if (ctx.request.body.transliteration) {
       filename = sanitize(doTransliterate(filename))
     }
-    if (info.agent.includes('Kindle')) {
-      filename = filename.replace(/[^\.\w\-"'\(\)]/g, '_')
-    }
 
-    if (mimetype === TYPE_EPUB && info.agent.includes('Kindle') && ctx.request.body.kindlegen) {
-      // convert to .mobi
-      conversion = 'kindlegen'
-      const outname = ctx.request.file.path.replace(/\.epub$/i, '.mobi')
-      filename = filename.replace(/\.kepub\.epub$/i, '.epub').replace(/\.epub$/i, '.mobi')
-      let stderr = ''
 
-      let p = new Promise((resolve, reject) => {
-        const kindlegen = spawn('kindlegen', [basename(ctx.request.file.path), '-dont_append_source', '-c1', '-o', basename(outname)], {
-          // stdio: 'inherit',
-          cwd: dirname(ctx.request.file.path)
-        })
-        kindlegen.once('error', function (err) {
-          fs.unlink(ctx.request.file.path, (err) => {
-            if (err) console.error(err)
-            else console.log('Removed file', ctx.request.file.path)
-          })
-          fs.unlink(ctx.request.file.path.replace(/\.epub$/i, '.mobi8'), (err) => {
-            if (err) console.error(err)
-            else console.log('Removed file', ctx.request.file.path.replace(/\.epub$/i, '.mobi8'))
-          })
-          reject('kindlegen error: ' + err)
-        })
-        kindlegen.once('close', (code) => {
-          fs.unlink(ctx.request.file.path, (err) => {
-            if (err) console.error(err)
-            else console.log('Removed file', ctx.request.file.path)
-          })
-          fs.unlink(ctx.request.file.path.replace(/\.epub$/i, '.mobi8'), (err) => {
-            if (err) console.error(err)
-            else console.log('Removed file', ctx.request.file.path.replace(/\.epub$/i, '.mobi8'))
-          })
-          if (code !== 0 && code !== 1) {
-            reject('kindlegen error code: ' + code + '\n' + stderr)
-            return
-          }
-
-          resolve(outname)
-        })
-        kindlegen.stdout.on('data', function (str) {
-          stderr += str
-          console.log('kindlegen: ' + str)
-        })
-        kindlegen.stderr.on('data', function (str) {
-          stderr += str
-          console.log('kindlegen: ' + str)
-        })
-      })
-      try {
-        data = await p
-      } catch (err) {
-        flash(ctx, {
-          success: false,
-          message: err.replaceAll(basename(ctx.request.file.path), "infile.epub").replaceAll(basename(outname), "outfile.mobi")
-        })
-        return
-      }
-
-    } else if (mimetype === TYPE_EPUB && info.agent.includes('Kobo') && ctx.request.body.kepubify) {
+    if (mimetype === TYPE_EPUB && info.agent.includes('Kobo') && ctx.request.body.kepubify) {
       // convert to Kobo EPUB
       conversion = 'kepubify'
       const outname = ctx.request.file.path.replace(/\.epub$/i, '.kepub.epub')
@@ -423,58 +362,12 @@ router.post('/upload', async (ctx, next) => {
         return
       }
 
-    } else if (mimetype == 'application/pdf' && ctx.request.body.pdfcropmargins) {
-      const dir = dirname(ctx.request.file.path)
-      const base = basename(ctx.request.file.path, '.pdf')
-      const outfile = resolvepath(join(dir, `${base}_cropped.pdf`))
-      let p = new Promise((resolve, reject) => {
-        let stderr = ''
-        const pdfcropmargins = spawn('pdfcropmargins', ['-s', '-u', '-o', outfile, basename(ctx.request.file.path)], {
-          // stdio: 'inherit',
-          cwd: dirname(ctx.request.file.path)
-        })
-        pdfcropmargins.once('error', function (err) {
-          fs.unlink(ctx.request.file.path, (err) => {
-            if (err) console.error(err)
-            else console.log('Removed file', ctx.request.file.path)
-          })
-          reject('pdfcropmargins error: ' + err)
-        })
-        pdfcropmargins.once('close', (code) => {
-          fs.unlink(ctx.request.file.path, (err) => {
-            if (err) console.error(err)
-            else console.log('Removed file', ctx.request.file.path)
-          })
-          if (code !== 0) {
-            reject('pdfcropmargins error code: ' + code + '\n' + stderr)
-            return
-          }
 
-          resolve(outfile)
-        })
-        pdfcropmargins.stdout.on('data', function (str) {
-          stderr += str
-          console.log('pdfcropmargins: ' + str)
-        })
-        pdfcropmargins.stderr.on('data', function (str) {
-          stderr += str
-          console.log('pdfcropmargins: ' + str)
-        })
-      })
-      try {
-        data = await p
-      } catch (err) {
-        flash(ctx, {
-          success: false,
-          message: err.replaceAll(basename(ctx.request.file.path), "infile.pdf").replaceAll(outfile, "outfile.pdf")
-        })
-        return
-      }
 
     } else {
       // No conversion
       data = ctx.request.file.path
-      filename = filename.replace(/\.epub$/i, '.epub').replace(/\.pdf$/i, '.pdf')
+      filename = filename.replace(/\.epub$/i, '.epub')
     }
 
     expireKey(key)
@@ -565,7 +458,7 @@ router.get('/receive', async ctx => {
 router.get('/', async ctx => {
   const agent = ctx.get('user-agent')
   console.log(ctx.ip, agent)
-  await sendfile(ctx, agent.includes('Kobo') || agent.includes('Kindle') || agent.toLowerCase().includes('tolino') || agent.includes('eReader') /*"eReader" is on Tolino*/ ? 'static/download.html' : 'static/upload.html')
+  await sendfile(ctx, agent.includes('Kobo') ? 'static/download.html' : 'static/upload.html')
 })
 
 router.get('/:filename', downloadFile)
