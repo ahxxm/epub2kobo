@@ -1,27 +1,29 @@
-# node 20 is lts at the time of writing
-FROM node:lts-alpine
+FROM golang:alpine AS builder
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Download and install kepubify
-RUN wget https://github.com/pgaskin/kepubify/releases/download/v4.0.4/kepubify-linux-64bit && \
-    mv kepubify-linux-64bit /usr/local/bin/kepubify && \
-    chmod +x /usr/local/bin/kepubify
+COPY go.mod go.sum* ./
+RUN go mod download
 
+COPY main.go .
+COPY static/ static/
 
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o epub2kobo
 
-# Copy files needed by npm install
-COPY package*.json ./
+# Download kepubify (optional)
+RUN wget -O kepubify.tar.gz https://github.com/pgaskin/kepubify/releases/download/v4.0.4/kepubify-linux-64bit.tar.gz && \
+    tar -xzf kepubify.tar.gz kepubify && \
+    chmod +x kepubify || true
 
-# Install app dependencies
-RUN npm install --omit=dev
+FROM scratch
 
-# Copy the rest of the app files (see .dockerignore)
-COPY . ./
+WORKDIR /
 
-# Create uploads directory if it doesn't exist
-RUN mkdir uploads
+COPY --from=builder /app/epub2kobo /epub2kobo
+COPY --from=builder /app/kepubify* /usr/local/bin/
 
 EXPOSE 3001
-CMD [ "npm", "start" ]
+
+ENTRYPOINT ["/epub2kobo"]

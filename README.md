@@ -1,28 +1,60 @@
-# send2ereader
+# Send to Kobo
 
-A self hostable service for sending EPUB files to a Kobo e-reader through the built-in browser.
+A lightweight web service for sending EPUB files to Kobo e-readers, with optional KEPUB conversion.
 
-## How To Run
+## Features
 
-### On Your Host OS
+- Upload EPUB files from desktop/mobile to Kobo e-reader
+- Optional KEPUB conversion for enhanced reading experience
+- Simple 4-character key system for file transfer
+- Automatic file cleanup after timeout
+- Minimal Docker image (~15MB)
 
-1. Have Node.js 16 or 20 installed
-2. Install this service's dependencies by running `$ npm install`
-3. (Optional) Install [Kepubify](https://github.com/pgaskin/kepubify) for converting EPUB files to Kobo's enhanced format. Have the kepubify executable in your PATH.
-4. Start this service by running: `$ npm start` and access it on HTTP port 3001
+## Quick Start
 
-### Containerized
-1. You need [Docker](https://www.docker.com/) and [docker-compose](https://docs.docker.com/compose/) installed
-2. Clone this repo (you need Dockerfile, docker-compose.yaml and package.json in the same directory)
-```
-git clone https://github.com/daniel-j/send2ereader.git
-```
-3. Build the image
-```
-docker compose build
-```
-4. run container (-d to keep running in the background)
-```
+### Docker
+
+```bash
+# Build and run with Docker Compose
 docker compose up -d
+
+# Or build manually
+docker build -t epub2kobo .
+docker run -p 3001:3001 epub2kobo
 ```
-5. Access the service on HTTP, default port 3001 (http://localhost:3001)
+
+### Local Development
+
+```bash
+# Build the Go binary
+go build -o epub2kobo
+
+# Run the server
+./epub2kobo
+```
+
+The service runs on http://localhost:3001
+
+## Usage
+
+1. **On your Kobo:** Open the browser and navigate to the service URL
+2. **On your phone/computer:** Enter the 4-character key shown on Kobo
+3. Upload your EPUB file (max 800MB)
+4. The file downloads automatically to your Kobo
+
+Files are automatically deleted after 30 seconds of inactivity or 1 hour maximum.
+
+## Configuration
+
+- **Port:** 3001 (configurable in docker-compose.yaml)
+- **Max file size:** 800MB
+- **Supported formats:** EPUB only
+- **Storage:** Temporary (files auto-delete after timeout)
+
+## Optional Dependencies
+
+- [kepubify](https://github.com/pgaskin/kepubify) - For KEPUB conversion (included in Docker image)
+
+## License
+
+MIT

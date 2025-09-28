@@ -350,7 +350,7 @@ func (s *Server) cleanupAllFiles() {
 }
 
 func generateKey() string {
-	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+	const chars = "abcdefghjkmnpqrstuvwxyz23456789"
 	key := make([]byte, keyLength)
 	
 	if _, err := rand.Read(key); err != nil {
