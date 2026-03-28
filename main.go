@@ -102,12 +102,13 @@ func main() {
 
 	go server.cleanupRoutine()
 
-	http.HandleFunc("/", server.handleRoot)
-	http.HandleFunc("/upload", server.handleUpload)
-	http.HandleFunc("/status/", server.handleStatus)
-	http.HandleFunc("/generate", server.handleGenerate)
-	http.Handle("/static/", http.FileServer(http.FS(staticFiles)))
-	http.HandleFunc("/{filename}", server.handleDownload)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", server.handleRoot)
+	mux.HandleFunc("POST /upload", server.handleUpload)
+	mux.HandleFunc("GET /status/{key}", server.handleStatus)
+	mux.HandleFunc("POST /generate", server.handleGenerate)
+	mux.Handle("GET /static/", http.FileServer(http.FS(staticFiles)))
+	mux.HandleFunc("GET /{filename}", server.handleDownload)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -139,16 +140,12 @@ func main() {
 		}
 	}
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal("Server failed:", err)
 	}
 }
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		s.handleDownload(w, r)
-		return
-	}
 
 	userAgent := r.Header.Get("User-Agent")
 	if !strings.Contains(userAgent, "Kobo") {
@@ -166,12 +163,6 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "generate_requires_post_method"})
-		return
-	}
 
 	key := generateKey()
 
@@ -190,10 +181,6 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
@@ -322,7 +309,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	key := strings.ToUpper(strings.TrimPrefix(r.URL.Path, "/status/"))
+	key := strings.ToUpper(r.PathValue("key"))
 	if len(key) != keyLength {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -352,7 +339,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
-	filename := strings.TrimPrefix(r.URL.Path, "/")
+	filename := r.PathValue("filename")
 	if filename == "" {
 		http.NotFound(w, r)
 		return
