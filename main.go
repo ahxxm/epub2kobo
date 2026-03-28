@@ -1,12 +1,12 @@
 package main
 
 import (
-	"crypto/rand"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
@@ -404,12 +404,8 @@ func generateKey() string {
 	const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 	key := make([]byte, keyLength)
 
-	if _, err := rand.Read(key); err != nil {
-		panic("failed to generate secure random key")
-	}
-
 	for i := range key {
-		key[i] = chars[int(key[i])%len(chars)]
+		key[i] = chars[rand.IntN(len(chars))]
 	}
 
 	return string(key)
