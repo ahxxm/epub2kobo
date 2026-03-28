@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -226,7 +225,6 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Uploaded file is of an invalid type: %s (EPUB only)", header.Filename), http.StatusBadRequest)
 		return
 	}
-	file.Seek(0, 0)
 
 	filename := sanitizeFilename(header.Filename)
 	if !strings.HasSuffix(strings.ToLower(filename), ".epub") {
@@ -446,7 +444,14 @@ func sanitizeFilename(filename string) string {
 	return sanitized
 }
 
-func isEPUB(file multipart.File) bool {
+func isEPUB(file io.ReadSeeker) bool {
+	// Assert cursor is at 0
+	currentPos, err := file.Seek(0, io.SeekCurrent)
+	if err != nil || currentPos != 0 {
+		panic(fmt.Sprintf("isEPUB called with file cursor not at 0 (pos: %d, err: %v)", currentPos, err))
+	}
+	defer file.Seek(0, io.SeekStart)
+
 	// EPUB must be a ZIP (PK) with "mimetype" as first file containing "application/epub+zip"
 	buffer := make([]byte, epubHeaderBytes)
 	n, err := file.Read(buffer)
