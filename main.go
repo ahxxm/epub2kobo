@@ -27,6 +27,8 @@ var staticFiles embed.FS
 //go:embed kepubify
 var kepubifyBinary []byte
 
+var extractedKepubifyPath string
+
 const (
 	maxUploadSize      = 800 * 1024 * 1024
 	keyLength          = 4
@@ -72,6 +74,19 @@ type Server struct {
 }
 
 func main() {
+	if len(kepubifyBinary) == 0 {
+		log.Fatal("kepubify binary is missing from embedded files")
+	}
+
+	tempDir := os.TempDir()
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		log.Fatal("Failed to create temp directory for kepubify:", err)
+	}
+	extractedKepubifyPath = filepath.Join(tempDir, "kepubify")
+	if err := os.WriteFile(extractedKepubifyPath, kepubifyBinary, 0755); err != nil {
+		log.Fatal("Failed to extract kepubify binary:", err)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3001"
@@ -100,6 +115,9 @@ func main() {
 		<-sigChan
 		log.Println("Shutting down...")
 		server.cleanupAllFiles()
+		if extractedKepubifyPath != "" {
+			os.Remove(extractedKepubifyPath)
+		}
 		os.Exit(0)
 	}()
 
@@ -473,26 +491,13 @@ func isEPUB(file multipart.File) bool {
 }
 
 func convertToKepub(epubPath string) string {
-	if len(kepubifyBinary) == 0 {
-		log.Println("Kepubify binary not available, skipping conversion")
+	if extractedKepubifyPath == "" {
+		log.Println("Kepubify binary path not set, skipping conversion")
 		return ""
 	}
-
-	tempDir := os.TempDir()
-	if err := os.MkdirAll(tempDir, 0755); err != nil {
-		log.Printf("failed to create temp directory: %v", err)
-		return ""
-	}
-
-	kepubifyPath := filepath.Join(tempDir, "kepubify-"+generateKey())
-	if err := os.WriteFile(kepubifyPath, kepubifyBinary, 0755); err != nil {
-		log.Printf("failed to extract kepubify: %v", err)
-		return ""
-	}
-	defer os.Remove(kepubifyPath) // Clean up after conversion
 
 	kepubPath := strings.TrimSuffix(epubPath, ".epub") + ".kepub.epub"
-	cmd := exec.Command(kepubifyPath, "-o", kepubPath, epubPath)
+	cmd := exec.Command(extractedKepubifyPath, "-o", kepubPath, epubPath)
 
 	if err := cmd.Run(); err != nil {
 		log.Printf("kepubify conversion failed: %v", err)
